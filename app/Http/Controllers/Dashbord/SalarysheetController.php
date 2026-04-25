@@ -34,7 +34,7 @@ class SalarysheetController extends BaseController
     {
         $teachers = User::where('student_status', '0')
             ->whereHas('roles', function ($query) {
-                $query->where('name', 'Teacher');
+                $query->where('name', 'teacher');
             })
             ->get();
 

@@ -2,11 +2,11 @@
 
 namespace App\Http\Controllers\Dashbord;
 
-use App\Http\Controllers\Dashbord\BaseController as BaseController;
 use App\Models\Salary;
 use App\Models\Salarysheet;
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 
 class SalaryController extends BaseController
 {
@@ -50,7 +50,7 @@ class SalaryController extends BaseController
      */
     public function store(Request $request)
     {
-        //validation
+        // validation
         $validation = $request->validate([
             'date' => 'required|date',
             'amount' => 'required|numeric',
@@ -83,7 +83,7 @@ class SalaryController extends BaseController
                 $advance_salary_check = Salary::where('user_id', $request->id)->where('status', '2')->first();
                 $prev_advanch_check = Salary::where('user_id', $request->id)->where('status', '2')->where('date', $prev_full_date)->first();
 
-                if ($request->status == '1' && $request->amount == $salaryAmount && $prev_full_date == $date_formate) { //paid monthly salary
+                if ($request->status == '1' && $request->amount == $salaryAmount && $prev_full_date == $date_formate) { // paid monthly salary
                     $prev_month_salary_check = Salary::where('user_id', $request->id)->where('date', $date_formate)->first();
                     if (! $prev_month_salary_check) {
                         $data = new Salary;
@@ -97,7 +97,7 @@ class SalaryController extends BaseController
                     } else {
                         return $this->returnMessage('you have alrady pay this month salary', 'warning');
                     }
-                } elseif ($request->status == '2' && $request->amount > '0' && $request->amount < $salaryAmount) { //advanch salary
+                } elseif ($request->status == '2' && $request->amount > '0' && $request->amount < $salaryAmount) { // advanch salary
 
                     if (! $advance_salary_check) {
                         $data = new Salary;
@@ -113,7 +113,7 @@ class SalaryController extends BaseController
                         return $this->returnMessage('Advance salary alrady exit', 'warning');
                     }
 
-                } elseif ($request->status == '1' && $prev_full_date == $date_formate && $request->amount == $prev_advanch_check->due) { //due amount pay
+                } elseif ($request->status == '1' && $prev_full_date == $date_formate && $request->amount == $prev_advanch_check->due) { // due amount pay
 
                     $prev_advanch_check->update([
                         'amount' => $request->amount + $prev_advanch_check->amount,
@@ -123,7 +123,7 @@ class SalaryController extends BaseController
 
                     return $this->returnMessage('Pay due salary this month', 'info');
                 } else {
-                    return $this->returnMessage('somthing with wrong pleace try agin!', 'warning');
+                    return $this->returnMessage('something with wrong pleace try agin!', 'warning');
                 }
             } else {
                 return $this->returnMessage('Salary sheet not found for the specified user ID', 'error');

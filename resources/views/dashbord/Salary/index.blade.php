@@ -4,7 +4,7 @@
     <meta charset="utf-8">
       <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
       <title>Salary</title>
-      
+
       {{-- css --}}
       @include('dashbord.layouts.css')
     </head>
@@ -67,7 +67,7 @@
                              @foreach ($salarySheets as $salarySheet)
 
                              <tr>
-                                <?php 
+                                <?php
                                     $salary_check = App\Models\Salary::where('user_id',$salarySheet->user_id)->where('date',$prev_full_date)->first();
                                 ?>
 
@@ -82,7 +82,7 @@
                                           <span class="badge bg-success">Paid</span>
                                       @elseif ($salary_check->status == '2')
                                           <span class="badge bg-success">Advance</span>
-                                      @endif 
+                                      @endif
                                   @else
                                       <span class="badge bg-danger">Unpaid</span>
                                   @endif
@@ -90,7 +90,7 @@
                                 </td>
                                 <td>
                                   <div class="d-flex align-items-center list-action">
-                                    <a href="{{ route('teacherSalary.create',$salarySheet->user_id) }}" class="badge badge-danger mr-2" data-toggle="tooltip" data-placement="top" title="" data-original-title="Pay Salary" >
+                                      <a href="{{ route('teacherSalary.create', ['user_id' => $salarySheet->user_id]) }}" class="badge badge-danger mr-2" data-toggle="tooltip" data-placement="top" title="" data-original-title="Pay Salary" >
                                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-file-earmark-plus" viewBox="0 0 16 16">
                                             <path d="M8 6.5a.5.5 0 0 1 .5.5v1.5H10a.5.5 0 0 1 0 1H8.5V11a.5.5 0 0 1-1 0V9.5H6a.5.5 0 0 1 0-1h1.5V7a.5.5 0 0 1 .5-.5"/>
                                             <path d="M14 4.5V14a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V2a2 2 0 0 1 2-2h5.5zm-3 0A1.5 1.5 0 0 1 9.5 3V1H4a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V4.5z"/>
@@ -100,7 +100,7 @@
                                 </td>
                              </tr>
                              @endforeach
-                           
+
                             </tbody>
                         </table>
                         </div>
@@ -116,7 +116,7 @@
 
 
 
-   
+
  <!--datatable-->
           <script>
           $(document).ready(function() {
@@ -124,12 +124,12 @@
                   lengthChange: false,
                   buttons: [ 'copy', 'excel', 'csv', 'pdf' ]
               } );
-          
+
               table.buttons().container()
                   .appendTo( '#example_wrapper .col-md-6:eq(0)' );
           } );
        </script>
-   
+
 
 
   {{-- js --}}
