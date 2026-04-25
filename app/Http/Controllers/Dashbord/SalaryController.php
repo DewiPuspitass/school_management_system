@@ -50,7 +50,6 @@ class SalaryController extends BaseController
      */
     public function store(Request $request)
     {
-        // validation
         $validation = $request->validate([
             'date' => 'required|date',
             'amount' => 'required|numeric',
@@ -63,76 +62,77 @@ class SalaryController extends BaseController
          * 2-->Advanch
          */
 
-        // Check if the specified fields exist in the request
-        if ($request->has(['date', 'amount', 'status'])) {
-            // Fetch salary sheet based on user ID
-            $salarySheet = Salarysheet::where('user_id', $request->id)->first();
-
-            $prev_full_date = date('Y-m', strtotime('-1 month'));
-
-            $date = $request->date;
-            $expload = explode('-', $date);
-            $year = $expload[0];
-            $month = $expload[1];
-
-            $date_formate = "$year-$month";
-
-            if ($salarySheet) {
-                $salaryAmount = $salarySheet->amount;
-
-                $advance_salary_check = Salary::where('user_id', $request->id)->where('status', '2')->first();
-                $prev_advanch_check = Salary::where('user_id', $request->id)->where('status', '2')->where('date', $prev_full_date)->first();
-
-                if ($request->status == '1' && $request->amount == $salaryAmount && $prev_full_date == $date_formate) { // paid monthly salary
-                    $prev_month_salary_check = Salary::where('user_id', $request->id)->where('date', $date_formate)->first();
-                    if (! $prev_month_salary_check) {
-                        $data = new Salary;
-                        $data->user_id = $request->id;
-                        $data->amount = $request->amount;
-                        $data->status = $request->status;
-                        $data->date = $date_formate;
-                        $data->save();
-
-                        return $this->returnMessage('Teacher salary payment successfulliy', 'success');
-                    } else {
-                        return $this->returnMessage('you have alrady pay this month salary', 'warning');
-                    }
-                } elseif ($request->status == '2' && $request->amount > '0' && $request->amount < $salaryAmount) { // advanch salary
-
-                    if (! $advance_salary_check) {
-                        $data = new Salary;
-                        $data->user_id = $request->id;
-                        $data->amount = $request->amount;
-                        $data->due = $salaryAmount - $request->amount;
-                        $data->status = $request->status;
-                        $data->date = $date_formate;
-                        $data->save();
-
-                        return $this->returnMessage('Advanch salary payment successfulliy', 'success');
-                    } else {
-                        return $this->returnMessage('Advance salary alrady exit', 'warning');
-                    }
-
-                } elseif ($request->status == '1' && $prev_full_date == $date_formate && $request->amount == $prev_advanch_check->due) { // due amount pay
-
-                    $prev_advanch_check->update([
-                        'amount' => $request->amount + $prev_advanch_check->amount,
-                        'due' => 0,
-                        'status' => $request->status,
-                    ]);
-
-                    return $this->returnMessage('Pay due salary this month', 'info');
-                } else {
-                    return $this->returnMessage('something with wrong pleace try agin!', 'warning');
-                }
-            } else {
-                return $this->returnMessage('Salary sheet not found for the specified user ID', 'error');
-            }
-        } else {
+        if (! $request->has(['date', 'amount', 'status'])) {
             return $this->returnMessage('One or more required fields (date, amount, status) are missing in the request.', 'warning');
         }
 
+        $salarySheet = Salarysheet::where('user_id', $request->id)->first();
+
+        if (! $salarySheet) {
+            return $this->returnMessage('Salary sheet not found for the specified user ID', 'error');
+        }
+
+        $prev_full_date = date('Y-m', strtotime('-1 month'));
+
+        $date = $request->date;
+        $expload = explode('-', $date);
+        $year = $expload[0];
+        $month = $expload[1];
+
+        $date_formate = "$year-$month";
+
+        $salaryAmount = $salarySheet->amount;
+
+        $advance_salary_check = Salary::where('user_id', $request->id)->where('status', '2')->first();
+        $prev_advanch_check = Salary::where('user_id', $request->id)->where('status', '2')->where('date', $prev_full_date)->first();
+
+        if ($request->status == '1' && $request->amount == $salaryAmount && $prev_full_date == $date_formate) {
+            $prev_month_salary_check = Salary::where('user_id', $request->id)->where('date', $date_formate)->first();
+
+            if ($prev_month_salary_check) {
+                return $this->returnMessage('you have alrady pay this month salary', 'warning');
+            }
+
+            $data = new Salary;
+            $data->user_id = $request->id;
+            $data->amount = $request->amount;
+            $data->status = $request->status;
+            $data->date = $date_formate;
+            $data->save();
+
+            return $this->returnMessage('Teacher salary payment successfulliy', 'success');
+        }
+
+        if ($request->status == '2' && $request->amount > '0' && $request->amount < $salaryAmount) {
+            if ($advance_salary_check) {
+                return $this->returnMessage('Advance salary alrady exit', 'warning');
+            }
+
+            $data = new Salary;
+            $data->user_id = $request->id;
+            $data->amount = $request->amount;
+            $data->due = $salaryAmount - $request->amount;
+            $data->status = $request->status;
+            $data->date = $date_formate;
+            $data->save();
+
+            return $this->returnMessage('Advanch salary payment successfulliy', 'success');
+        }
+
+        if ($request->status == '1' && $prev_full_date == $date_formate && $request->amount == $prev_advanch_check->due) {
+
+            $prev_advanch_check->update([
+                'amount' => $request->amount + $prev_advanch_check->amount,
+                'due' => 0,
+                'status' => $request->status,
+            ]);
+
+            return $this->returnMessage('Pay due salary this month', 'info');
+        }
+
+        return $this->returnMessage('something with wrong pleace try agin!', 'warning');
     }
+
 
     /**
      * Display the specified resource.
