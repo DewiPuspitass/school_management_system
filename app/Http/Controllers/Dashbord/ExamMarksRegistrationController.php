@@ -72,7 +72,7 @@ class ExamMarksRegistrationController extends BaseController
         }
 
         // Strategi: Extract Method & Decomposition
-        $data = $this->prepareAllStudentMarks($request, $subjects_id, $schedules, function($subject_id, $student_id) {
+        $data = $this->prepareAllStudentMarks($request, $subjects_id, $schedules, function ($subject_id, $student_id) {
             return $this->attendanceMarks($subject_id, $student_id);
         });
 
