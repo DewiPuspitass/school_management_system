@@ -2,12 +2,10 @@
 
 namespace App\Http\Controllers\Dashbord;
 
-use App\Http\Controllers\Dashbord\BaseController as BaseController;
 use App\Models\Classes;
 use App\Models\Exam;
 use App\Models\ExamMarksRegistration;
 use App\Models\ExamSchedule;
-use App\Models\Subject;
 use App\Models\User;
 use Illuminate\Http\Request;
 
@@ -51,71 +49,71 @@ class ExamMarksRegistrationController extends BaseController
     public function store(Request $request)
     {
         $request->validate([
-            'studentId' => 'required',
-            'subjectId' => 'required',
-            'class_work' => 'required',
-            'home_work' => 'required',
-            'exam' => 'required',
-            'exam_id' => 'required',
-            'class_id' => 'required',
+            'studentId' => 'required', 'subjectId' => 'required',
+            'class_work' => 'required', 'home_work' => 'required',
+            'exam' => 'required', 'exam_id' => 'required', 'class_id' => 'required',
         ]);
 
-        $subjects_id = array_unique($request->input('subjectId')); //push unique subject id into the array
+        $subjects_id = array_unique($request->input('subjectId'));
 
-        $exam_schedule = ExamSchedule::where(['class_id' => $request->class_id, 'exam_id' => $request->exam_id])->first();
+        $schedules = ExamSchedule::where('class_id', $request->class_id)
+            ->where('exam_id', $request->exam_id)
+            ->get()
+            ->keyBy('subject_id');
 
-        if ($exam_schedule) {
-
+        if ($schedules->isNotEmpty()) {
             $data = [];
 
             foreach ($request->studentId as $student_id) {
                 foreach ($subjects_id as $subject_id) {
-                    $exam_schedule_check = ExamSchedule::where(['class_id' => $request->class_id, 'exam_id' => $request->exam_id, 'subject_id' => $subject_id])->first();
-                    //get Attendanceh Marks
+                    $exam_schedule_check = $schedules->get($subject_id);
+
+                    if (! $exam_schedule_check) {
+                        continue;
+                    }
+
                     $AttendancehMarks = $this->attendanceMarks($subject_id, $student_id);
-
                     $fullMarks = $exam_schedule_check->full_marks;
-                    $passMarks = $exam_schedule_check->pass_marks;
 
-                    // classWork + homeWork + examMarks + AttendancehMarks
-                    $total_marks = $request->class_work[$student_id][$subject_id] + $request->home_work[$student_id][$subject_id] + $request->exam[$student_id][$subject_id] + $AttendancehMarks;
+                    $total_marks = $request->class_work[$student_id][$subject_id] +
+                        $request->home_work[$student_id][$subject_id] +
+                        $request->exam[$student_id][$subject_id] +
+                        $AttendancehMarks;
 
-                    if (! empty($exam_schedule_check)) {
-                        if (! ($total_marks > $fullMarks)) {
-                            $data[] = [
-                                'student_id' => $student_id,
-                                'subject_id' => $subject_id,
-                                'class_id' => $request->class_id,
-                                'exam_id' => $request->exam_id,
-                                'class_work' => $request->class_work[$student_id][$subject_id],
-                                'home_work' => $request->home_work[$student_id][$subject_id],
-                                'mark' => $request->exam[$student_id][$subject_id],
-                                'attendance_mark' => $AttendancehMarks,
-                                'total_mark' => $total_marks,
-                                'full_marks' => $fullMarks,
-                                'pass_marks' => $passMarks,
-                                'created_at' => now(),
-                            ];
-                        }
+                    $isAllowed = ($total_marks <= $fullMarks);
+
+                    if ($isAllowed) {
+                        $data[] = [
+                            'student_id' => $student_id,
+                            'subject_id' => $subject_id,
+                            'class_id' => $request->class_id,
+                            'exam_id' => $request->exam_id,
+                            'class_work' => $request->class_work[$student_id][$subject_id],
+                            'home_work' => $request->home_work[$student_id][$subject_id],
+                            'mark' => $request->exam[$student_id][$subject_id],
+                            'attendance_mark' => $AttendancehMarks,
+                            'total_mark' => $total_marks,
+                            'full_marks' => $fullMarks,
+                            'pass_marks' => $exam_schedule_check->pass_marks,
+                            'created_at' => now(),
+                        ];
                     }
                 }
             }
 
-            //data check
             if ($data) {
                 $insertData = ExamMarksRegistration::insert($data);
             } else {
                 return $this->returnMessage('You have alrady Registration Marks', 'error');
             }
 
-            // data insert message
             if ($insertData) {
                 return $this->returnMessage('Registration Marks Inserted Successfully!', 'success');
             } else {
                 return $this->returnMessage('Somthing went wrong!', 'error');
             }
         } else {
-            return $this->returnMessage('Exam Schedule not found for the specified Class and Exam ID', 'error');
+            return $this->returnMessage('Exam Schedule not found', 'error');
         }
     }
 
@@ -152,7 +150,7 @@ class ExamMarksRegistrationController extends BaseController
             'mark' => ['required'],
         ]);
 
-        //get some data
+        // get some data
         $fullMark = $exammarksregistration->full_marks;
         $attendance_mark = $exammarksregistration->attendance_mark;
 
@@ -180,7 +178,7 @@ class ExamMarksRegistrationController extends BaseController
         //
     }
 
-    //show  result with student id and exam id
+    // show  result with student id and exam id
     public function result_show($student_id, $exam_id)
     {
         $MarksRegistrations = ExamMarksRegistration::where('exam_id', $exam_id)->where('student_id', $student_id)->select('id', 'exam_id', 'subject_id', 'class_work', 'home_work', 'mark', 'attendance_mark', 'total_mark', 'full_marks', 'pass_marks')->get();
@@ -189,7 +187,7 @@ class ExamMarksRegistrationController extends BaseController
         return view('dashbord.ExamMarksRegistration.result', compact('MarksRegistrations', 'studentInfo'));
     }
 
-    //marksheet Generator
+    // marksheet Generator
     public function markSheetGenerate($student_id, $student_slug, $exam_id, $exam_slug, $class_id, $class_slug)
     {
 
@@ -205,7 +203,7 @@ class ExamMarksRegistrationController extends BaseController
                 ->get();
             if ($examMarks) {
 
-                //store calculated total  marks
+                // store calculated total  marks
                 $all_subject_total_marks = 0;
                 $all_subject_full_marks = 0;
 
@@ -215,11 +213,11 @@ class ExamMarksRegistrationController extends BaseController
                     $fullMarks = $examMark->full_marks;
                     $passMarks = $examMark->pass_marks;
 
-                    //Grade Calculator
+                    // Grade Calculator
                     $GradePercentage = round(($totalMarks / $fullMarks) * 100, 2);
                     $Grade_Calculator = $this->gradeCalculation($GradePercentage);
 
-                    //count total gap and Grade
+                    // count total gap and Grade
                     $all_subject_total_marks += $examMark->total_mark;
                     $all_subject_full_marks += $examMark->full_marks;
 
@@ -234,11 +232,11 @@ class ExamMarksRegistrationController extends BaseController
 
                 }
 
-                //calculate Average Grade and point
+                // calculate Average Grade and point
                 $totalPercentage = ($all_subject_total_marks / $all_subject_full_marks) * 100;
                 $Avarage_Grade_point_calculator = $this->gradeCalculation($totalPercentage);
 
-                //get Remarks
+                // get Remarks
                 $Remarks = $this->getRemark($Avarage_Grade_point_calculator[0]);
 
                 return view('dashbord.ExamMarksRegistration.markSheet', compact('student', 'exam', 'class', 'MarkSheet', 'Avarage_Grade_point_calculator', 'Remarks', 'totalPercentage'));
