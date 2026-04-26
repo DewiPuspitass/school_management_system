@@ -3,45 +3,49 @@
 namespace App\Http\Controllers\Helpers;
 
 use App\Models\Salary;
-use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 
 trait SalaryHelpers
 {
-    private function processSalaryPayment(Request $request, $salarySheet, \Closure $msg)
+    private function formatDate($date): string
+    {
+        $expload = explode('-', $date);
+
+        return $expload[0].'-'.$expload[1];
+    }
+
+    private function handleSalaryProcess(Request $request, $salarySheet, \Closure $msg)
     {
         $prev_full_date = date('Y-m', strtotime('-1 month'));
-        $date_formate = date('Y-m', strtotime($request->date)); // Sesuai logika explode Y-m
+        $date_formate = $this->formatDate($request->date);
         $salaryAmount = $salarySheet->amount;
 
-        // Lookup Data
         $advance_salary_check = Salary::where('user_id', $request->id)->where('status', '2')->first();
         $prev_advanch_check = Salary::where('user_id', $request->id)->where('status', '2')->where('date', $prev_full_date)->first();
 
-        // LOOKUP RULES: Memetakan kondisi agar tetap sama persis dengan kode asli
-        $isPaidMonthly = ($request->status == '1' && $request->amount == $salaryAmount && $prev_full_date == $date_formate);
+        // STRATEGI: LOOKUP TABLE (Menghitung semua kondisi di awal)
+        $isMonthly = ($request->status == '1' && $request->amount == $salaryAmount && $prev_full_date == $date_formate);
         $isAdvance = ($request->status == '2' && $request->amount > '0' && $request->amount < $salaryAmount);
 
-        // Pengecekan null-safe untuk prev_advanch_check agar tidak error
-        $isDuePay = ($request->status == '1' && $prev_full_date == $date_formate && $prev_advanch_check && $request->amount == $prev_advanch_check->due);
+        $isDue = ($request->status == '1' && $prev_full_date == $date_formate && $prev_advanch_check && $request->amount == $prev_advanch_check->due);
 
-        // Flow Control menggunakan Early Return (Guard Clauses)
-        if ($isPaidMonthly) {
-            return $this->handleMonthlySalary($request, $date_formate, $msg);
+        // STRATEGI: GUARD CLAUSES (Mengganti If-ElseIf-Else menjadi Early Return)
+        if ($isMonthly) {
+            return $this->processMonthlySalary($request, $date_formate, $msg);
         }
 
         if ($isAdvance) {
-            return $this->handleAdvanceSalary($request, $date_formate, $salaryAmount, $advance_salary_check, $msg);
+            return $this->processAdvanceSalary($request, $date_formate, $salaryAmount, $advance_salary_check, $msg);
         }
 
-        if ($isDuePay) {
-            return $this->handleDueSalary($request, $prev_advanch_check, $msg);
+        if ($isDue) {
+            return $this->processDueSalary($request, $prev_advanch_check, $msg);
         }
 
         return $msg('something with wrong pleace try agin!', 'warning');
     }
 
-    private function handleMonthlySalary($request, $date_formate, $msg)
+    private function processMonthlySalary($request, $date_formate, $msg)
     {
         $prev_month_salary_check = Salary::where('user_id', $request->id)->where('date', $date_formate)->first();
 
@@ -59,7 +63,7 @@ trait SalaryHelpers
         return $msg('Teacher salary payment successfulliy', 'success');
     }
 
-    private function handleAdvanceSalary($request, $date_formate, $salaryAmount, $advance_salary_check, $msg)
+    private function processAdvanceSalary($request, $date_formate, $salaryAmount, $advance_salary_check, $msg)
     {
         if ($advance_salary_check) {
             return $msg('Advance salary alrady exit', 'warning');
@@ -76,7 +80,7 @@ trait SalaryHelpers
         return $msg('Advanch salary payment successfulliy', 'success');
     }
 
-    private function handleDueSalary($request, $prev_advanch_check, $msg)
+    private function processDueSalary($request, $prev_advanch_check, $msg)
     {
         $prev_advanch_check->update([
             'amount' => $request->amount + $prev_advanch_check->amount,

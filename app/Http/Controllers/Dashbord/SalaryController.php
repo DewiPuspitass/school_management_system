@@ -74,7 +74,7 @@ class SalaryController extends BaseController
         };
 
         // Decomposition ke proses utama
-        return $this->processSalaryPayment($request, $salarySheet, $msg);
+        return $this->handleSalaryProcess($request, $salarySheet, $msg);
     }
 
     /**
